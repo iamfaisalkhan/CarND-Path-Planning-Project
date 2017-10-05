@@ -160,7 +160,7 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
-int getNextLane(int current_lane, auto sensor_fusion, int prev_size, double car_s)
+int getNextLane(int current_lane, vector<vector<double>> sensor_fusion, int prev_size, double car_s)
 {
 
   for (int l = 0; l < 3; l++)
@@ -169,49 +169,30 @@ int getNextLane(int current_lane, auto sensor_fusion, int prev_size, double car_
     if (current_lane == 0 and l == 2) continue;
     if (current_lane == 2 and l == 0) continue;
 
+    bool might_collide = false;
+
     for (int i = 0; i < sensor_fusion.size(); i++)
     {
       float d = sensor_fusion[i][6];
-
       if (d < (2+4*l+2) && d > (2+4*l-2))
       {
-
         double vx = sensor_fusion[i][3];
         double vy = sensor_fusion[i][4];
         double check_speed = sqrt(vx*vx+vy*vy);
         double check_car_s = sensor_fusion[i][5];
         check_car_s += ((double) prev_size * 0.02 * check_speed);
 
-        bool might_collide = false;
-        might_collide = (check_car_s - car_s)  < 40;
-        might_collide = 
-
+        if (check_car_s >= car_s && ((check_car_s - car_s) < 40))
+        {
+          might_collide = true;
+        }
       }
     }
 
+    if (!might_collide)
+      return l;
   }
-  for (int i = 0 ; i < sensor_fusion.size(); i++)
-  {
-    float d = sensor_fusion[i][6];
 
-    if (d < (2+4*lane+2) && d > (2+4*lane-2))
-              {
-                double vx = sensor_fusion[i][3];
-                double vy = sensor_fusion[i][4];
-
-                double check_speed = sqrt(vx*vx+vy*vy);
-                double check_car_s = sensor_fusion[i][5];
-
-                check_car_s += ((double) prev_size * 0.02 * check_speed);
-
-                if ( (check_car_s > car_s) && ((check_car_s-car_s) < 30))
-                {
-
-                  too_close = true;
-                 
-                }
-              }
-            }
   return -1; // lane change not feasible. 
 }
 
@@ -260,7 +241,7 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-           sdata = string(data).substr(0, length);
+    // auto sdata = string(data).substr(0, length);
     //cout << sdata << endl;
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
@@ -315,7 +296,7 @@ int main() {
 
                 check_car_s += ((double) prev_size * 0.02 * check_speed);
 
-                if ( (check_car_s > car_s) && ((check_car_s-car_s) < 30))
+                if ( (check_car_s > car_s) && ((check_car_s-car_s) < 20))
                 {
 
                   too_close = true;
@@ -331,7 +312,7 @@ int main() {
             {
                 ref_vel -= .224;
 
-                int new_lane = changeLane();
+                int new_lane = getNextLane(lane, sensor_fusion, prev_size, car_s);
 
                 // -1 indicates that lane change is not feasible. 
                 if (new_lane != -1) 
