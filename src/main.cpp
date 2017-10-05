@@ -160,6 +160,61 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
+int getNextLane(int current_lane, auto sensor_fusion, int prev_size, double car_s)
+{
+
+  for (int l = 0; l < 3; l++)
+  {
+    if (current_lane == l) continue;
+    if (current_lane == 0 and l == 2) continue;
+    if (current_lane == 2 and l == 0) continue;
+
+    for (int i = 0; i < sensor_fusion.size(); i++)
+    {
+      float d = sensor_fusion[i][6];
+
+      if (d < (2+4*l+2) && d > (2+4*l-2))
+      {
+
+        double vx = sensor_fusion[i][3];
+        double vy = sensor_fusion[i][4];
+        double check_speed = sqrt(vx*vx+vy*vy);
+        double check_car_s = sensor_fusion[i][5];
+        check_car_s += ((double) prev_size * 0.02 * check_speed);
+
+        bool might_collide = false;
+        might_collide = (check_car_s - car_s)  < 40;
+        might_collide = 
+
+      }
+    }
+
+  }
+  for (int i = 0 ; i < sensor_fusion.size(); i++)
+  {
+    float d = sensor_fusion[i][6];
+
+    if (d < (2+4*lane+2) && d > (2+4*lane-2))
+              {
+                double vx = sensor_fusion[i][3];
+                double vy = sensor_fusion[i][4];
+
+                double check_speed = sqrt(vx*vx+vy*vy);
+                double check_car_s = sensor_fusion[i][5];
+
+                check_car_s += ((double) prev_size * 0.02 * check_speed);
+
+                if ( (check_car_s > car_s) && ((check_car_s-car_s) < 30))
+                {
+
+                  too_close = true;
+                 
+                }
+              }
+            }
+  return -1; // lane change not feasible. 
+}
+
 int main() {
   uWS::Hub h;
 
@@ -205,7 +260,7 @@ int main() {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-    //auto sdata = string(data).substr(0, length);
+           sdata = string(data).substr(0, length);
     //cout << sdata << endl;
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
@@ -263,20 +318,28 @@ int main() {
                 if ( (check_car_s > car_s) && ((check_car_s-car_s) < 30))
                 {
 
-                  // ref_vel = 29.5;
                   too_close = true;
-
-                  if (lane > 0) {
-                    lane = 0; 
-                  }
-
+                 
                 }
               }
             }
 
+            // If we are getting close to a vehicle, lets start planning to change
+            // lanes. 
+
             if (too_close)
             {
-              ref_vel -= .224;
+                ref_vel -= .224;
+
+                int new_lane = changeLane();
+
+                // -1 indicates that lane change is not feasible. 
+                if (new_lane != -1) 
+                {
+                  lane = new_lane;
+                  too_close = false;
+                }
+
             }
             else if (ref_vel < 49.5)
             {
