@@ -62,6 +62,7 @@ int ClosestWaypoint(double x, double y, const vector<double> &maps_x, const vect
 
 }
 
+//
 int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x, const vector<double> &maps_y)
 {
 
@@ -160,17 +161,22 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
+// Main logic for chaning lane based on the minimum gap needed
 int getNextLane(int current_lane, vector<vector<double>> sensor_fusion, int prev_size, double car_s)
 {
 
   for (int l = 0; l < 3; l++)
   {
-    if (current_lane == l) continue;
+    if (current_lane == l) continue; // no change possible
+    // won't allow change from extreme left to extreme right lanes.
     if (current_lane == 0 and l == 2) continue;
+    // no change of lane possible from extreme right to extreme left lanes.
     if (current_lane == 2 and l == 0) continue;
 
     bool might_collide = false;
 
+    // Go over the sensor data to find if there are vehicle in our lane of choice
+    // and if those vehicle might be on the collision path if we try to switch to that lane. 
     for (int i = 0; i < sensor_fusion.size(); i++)
     {
       float d = sensor_fusion[i][6];
@@ -310,8 +316,12 @@ int main() {
 
             if (too_close)
             {
+                // incremently reduce speed. 
                 ref_vel -= .224;
 
+                // check if a lane change is possible. THe  criteria we are looking at 
+                // is to avoid collision by picking a lane that offer a minimum amount of gap
+                // so that a smooth lane change is possible. 
                 int new_lane = getNextLane(lane, sensor_fusion, prev_size, car_s);
 
                 // -1 indicates that lane change is not feasible. 
@@ -327,7 +337,6 @@ int main() {
               ref_vel += .224;
             }
 
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             vector<double> ptsx;
             vector<double> ptsy;
 
@@ -427,18 +436,6 @@ int main() {
               next_y_vals.push_back(y_point);
             }
 
-
-
-            // double dist_inc = 0.5;
-            // for (int i = 0 ; i < 50; i++)
-            // {
-            //     double next_s = car_s + (i+1) * dist_inc;
-            //     double next_d = 6;
-
-            //     vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            //     next_x_vals.push_back(xy[0]);
-            //     next_y_vals.push_back(xy[1]);
-            // }
 
             msgJson["next_x"] = next_x_vals;
             msgJson["next_y"] = next_y_vals;
